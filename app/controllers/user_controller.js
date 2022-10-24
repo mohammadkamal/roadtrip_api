@@ -1,41 +1,12 @@
 const jsonwebtoken = require('jsonwebtoken');
 const validateToken = require('../../config/validate_token');
 let config = require('../../config/config');
-let User = require('mongoose').model('User'),
-    Admin = require('mongoose').model('Admin');
+let User = require('mongoose').model('User');
+let errorGetter = require('../../config/error_getter');
 
-var getErrorMessage = function (err) {
-    var message = '';
-
-    if (err.code) {
-        switch (err.code) {
-            case 11000:
-            case 11001:
-                message = 'username-already-in-use';
-                break;
-            default:
-                message = err.message;
-        }
-    } else {
-        for (var errName in err.errors) {
-            if (err.errors[errName].message) message = err.errors[errName].message;
-        }
-    }
-
-    return message;
-};
-
-exports.signup = async function (req, res, next) {
+exports.signup = async function (req, res) {
     let user = new User(req.body);
-
     let email = req.body.email;
-    let username = req.body.username;
-    let password = req.body.password;
-
-    if (!email || !username || !password) {
-        return res.status(400).send({ error: "missing-parameters" });
-    }
-
     const oldUser = await User.findOne({ email });
 
     if (oldUser) {
@@ -56,7 +27,7 @@ exports.signup = async function (req, res, next) {
     user.save(function (err) {
         if (err) {
             return res.status(400).send({
-                error: getErrorMessage(err)
+                error: errorGetter(err)
             });
         } else {
             return res.status(201).json(user);
@@ -64,7 +35,7 @@ exports.signup = async function (req, res, next) {
     });
 }
 
-exports.signIn = async function (req, res, next) {
+exports.signIn = async function (req, res) {
     const email = req.body.email;
     const password = req.body.password;
 
@@ -85,7 +56,7 @@ exports.signIn = async function (req, res, next) {
         user.save(function (err) {
             if (err) {
                 return res.status(400).send({
-                    error: getErrorMessage(err)
+                    error: errorGetter(err)
                 });
             } else {
                 return res.status(200).json(user);
@@ -99,55 +70,51 @@ exports.signIn = async function (req, res, next) {
 }
 
 exports.list = async function (req, res) {
-    const userId = validateToken(req, res);
-
-    let admin = await Admin.findOne({
-        userId
-    });
-
-    if (admin) {
-        if (admin.token === req.headers.authorization.split(' ')[1]) {
-            User.find().sort('-created')
-                .exec(function (err, users) {
-                    if (err) {
-                        return res.status(400).send({ error: getErrorMessage(err) });
-                    } else {
-                        res.json(users);
-                    }
-                });
-        }
-        else {
-            return res.status(401).send({ error: "expired-token" });
-        }
-    }
-    else {
-        return res.status(401).send({ error: "admin-not-found" });
-    }
+    User.find().sort('-created')
+        .exec(function (err, users) {
+            if (err) {
+                return res.status(400).send({ error: errorGetter(err) });
+            } else {
+                return res.status(200).json(users);
+            }
+        });
 };
 
 exports.userById = async function (req, res, next, id) {
-    const userId = validateToken(req, res);
-
-    let admin = await Admin.findOne({
-        userId
-    });
-
-    if (admin) {
-        if (admin.token === req.headers.authorization.split(' ')[1]) {
-            User.findById(id)
-                .exec(function (err, user) {
-                    if (err) {
-                        return res.status(400).send({ error: getErrorMessage(err) });
-                    } else {
-                        res.json(user);
-                    }
-                });
-        }
-        else {
-            return res.status(401).send({ error: "expired-token" });
-        }
-    }
-    else {
-        return res.status(401).send({ error: "admin-not-found" });
-    }
+    User.findById(id)
+        .exec(function (err, user) {
+            if (err) {
+                return res.status(400).send({ error: errorGetter(err) });
+            } else {
+                req.user = user;
+                next();
+            }
+        });
 };
+
+exports.read = function (req, res) {
+    return res.status(200).json(req.user);
+}
+
+exports.isUserAuthorized = async function (req, res, next) {
+    const userId = validateToken(req, res);
+    var user = req.user;
+
+    if (userId === user.id) {
+        next();
+    } else {
+        return res.status(401).send({ "error": "unauthorized" });
+    }
+}
+
+exports.delete = async function (req, res) {
+    var user = req.user;
+
+    user.remove(function (err) {
+        if (err) {
+            return res.status(400).send({ error: errorGetter(err) });
+        } else {
+            return res.status(200).json(user);
+        }
+    });
+}

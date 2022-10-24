@@ -6,6 +6,9 @@ module.exports = function () {
 
     require('../app/models/user');
     require('../app/models/admin');
+    require('../app/models/landmark');
+    require('../app/models/landmark_approvement');
+    require('../app/models/trip_program');
 
     return db;
 }

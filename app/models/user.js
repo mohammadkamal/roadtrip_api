@@ -2,29 +2,37 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 let Schema = mongoose.Schema
 
+const provider_types = ['local', 'google', 'apple', 'facebook', 'twitter'];
+
 let UserSchema = new Schema({
-    fullName: { type: String },
-    email: { type: String, match: [/.+@.+\..+/, 'Please fill a valid email address'] },
-    display_name: { type: String },
+    full_name: { type: String },
+    email: {
+        type: String,
+        match: [/.+@.+\..+/, 'Please fill a valid email address'],
+        required: 'E-mail is required'
+    },
     password: {
-        type: String, validate: [
+        type: String,
+        validate: [
             function (password) {
                 return password && password.length > 6;
             },
             'Password should be longer than 6 letters'
-        ]
+        ],
+        required: 'Password is required'
     },
     salt: { type: String },
-    provider: { type: String, required: 'Provider is required' },
+    provider: { type: String, enum: provider_types, default: 'local' },
     provider_id: { type: String },
-    provider_data: {},
+    provider_data: { type: Map },
     created: { type: Date, default: Date.now },
     token: { type: String },
     token_expiration: { type: Date },
     phone_number: { type: String },
     social_token: { type: String },
-    trips: { type: Array },
-    preferences: { type: Array }
+    // TODO: Reach a decision about it
+    //trips: { type: [Schema.Types.ObjectId], ref: 'Trip' },
+    tourism_prefs: { type: [String] }
 });
 
 UserSchema.methods.hashPassword = function (password) {

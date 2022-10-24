@@ -1,30 +1,9 @@
 const jsonwebtoken = require('jsonwebtoken');
 let config = require('../../config/config');
 let Admin = require('mongoose').model('Admin');
-let validateToken = require('../../config/validate_token');
+let errorGetter = require('../../config/error_getter');
 
-var getErrorMessage = function (err) {
-    var message = '';
-
-    if (err.code) {
-        switch (err.code) {
-            case 11000:
-            case 11001:
-                message = 'username-already-in-use';
-                break;
-            default:
-                message = err.message;
-        }
-    } else {
-        for (var errName in err.errors) {
-            if (err.errors[errName].message) message = err.errors[errName].message;
-        }
-    }
-
-    return message;
-};
-
-exports.signup = async function (req, res, next) {
+exports.signup = async function (req, res) {
     let admin = new Admin(req.body);
 
     let username = req.body.username;
@@ -52,7 +31,7 @@ exports.signup = async function (req, res, next) {
     admin.save(function (err) {
         if (err) {
             return res.status(400).send({
-                error: getErrorMessage(err)
+                error: errorGetter(err)
             });
         } else {
 
@@ -61,7 +40,7 @@ exports.signup = async function (req, res, next) {
     });
 }
 
-exports.signIn = async function (req, res, next) {
+exports.signIn = async function (req, res) {
     const username = req.body.username;
     const password = req.body.password;
 
@@ -81,7 +60,7 @@ exports.signIn = async function (req, res, next) {
         admin.save(function (err) {
             if (err) {
                 return res.status(400).send({
-                    error: getErrorMessage(err)
+                    error: errorGetter(err)
                 });
             } else {
                 return res.status(200).json(admin);
@@ -97,7 +76,7 @@ exports.list = async function (req, res) {
     Admin.find().sort('-created')
         .exec(function (err, admins) {
             if (err) {
-                return res.status(400).send({ error: getErrorMessage(err) });
+                return res.status(400).send({ error: errorGetter(err) });
             } else {
                 res.json(admins);
             }
@@ -109,29 +88,14 @@ exports.adminById = async function (req, res, next, id) {
     Admin.findById(id)
         .exec(function (err, foundAdmin) {
             if (err) {
-                return res.status(400).send({ error: getErrorMessage(err) });
+                return res.status(400).send({ error: errorGetter(err) });
             } else {
-                res.json(foundAdmin);
+                req.admin = foundAdmin;
+                next();
             }
         });
 };
 
-exports.isAuthorized = async function (req, res, next) {
-    const userId = validateToken(req, res);
-
-    let admin = await Admin.findOne({
-        userId
-    });
-
-    if (admin) {
-        if (admin.token === req.headers.authorization.split(' ')[1]) {
-            next();
-        }
-        else {
-            return res.status(401).send({ error: "expired-token" });
-        }
-    }
-    else {
-        return res.status(401).send({ error: "unauthorized" });
-    }
+exports.read = function (req, res) {
+    return res.status(200).json(req.admin);
 }

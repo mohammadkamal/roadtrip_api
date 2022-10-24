@@ -31,6 +31,7 @@ module.exports = function () {
 
     require('../app/routes/user_routes.js')(app);
     require('../app/routes/admin_routes.js')(app);
+    require('../app/routes/landmark_routes.js')(app);
 
     return app;
 

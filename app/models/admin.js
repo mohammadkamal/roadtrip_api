@@ -15,7 +15,7 @@ let AdminSchema = new Schema({
   salt: { type: String },
   created: { type: Date, default: Date.now },
   token: { type: String },
-  tokenExpiration: { type: Date }
+  token_expiration: { type: Date }
 });
 
 AdminSchema.methods.hashPassword = function (password) {

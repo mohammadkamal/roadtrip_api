@@ -9,4 +9,4 @@ let app = express(db);
 app.listen(6000);
 module.exports = app;
 
-console.log('Alive at http://localhost:6000/')
+console.log('Alive at http://localhost:6000/');
